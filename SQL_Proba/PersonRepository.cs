@@ -2,36 +2,33 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Threading.Tasks;
 
 namespace SQL_Proba
 {
-    public class PersonRepository : IDisposable
+    public class PersonRepository
     {
-        //public string _ConnectionString { get; set; }
+        private string _ConnectionString;
 
-        private readonly NpgsqlConnection _Connection;
         private bool _disposed = false;
 
         public PersonRepository(string connectionString)
         {
-            //_ConnectionString = connectionString;
-            _Connection = new NpgsqlConnection(connectionString);
+            _ConnectionString = connectionString;
         }
 
-        public void Create(string name, int age)
+        public async Task CreateAsync(string name, int age)
         {
             try
             {
-                if (_Connection.State != ConnectionState.Open)
-                {
-                    _Connection.Open();
-                }
+                await using var connection = new NpgsqlConnection(_ConnectionString);
+                await connection.OpenAsync();
 
                 string sql = "INSERT INTO users (name, age) VALUES (@name, @age);";
-                using var cmd = new NpgsqlCommand(sql, _Connection);
+                await using var cmd = new NpgsqlCommand(sql, connection);
                 cmd.Parameters.AddWithValue("name", name);
                 cmd.Parameters.AddWithValue("age", age);
-                cmd.ExecuteNonQuery();
+                await cmd.ExecuteNonQueryAsync();
             }
 
             catch (Exception ex)
@@ -39,34 +36,24 @@ namespace SQL_Proba
                 Console.WriteLine($"Error creating user: {ex.Message}");
                 throw;
             }
-
-            finally 
-                {
-                    if (_Connection.State == ConnectionState.Open)
-                    {
-                        _Connection.Close();
-                    }
-                }
         }
 
-        public List<Person> GetAll()
+        public async Task<List<Person>> GetAllAsync()
         {
 
             try
             {
-                if (_Connection.State != ConnectionState.Open)
-                {
-                    _Connection.Open();
-                }
+                await using var connection = new NpgsqlConnection(_ConnectionString);
+                await connection.OpenAsync();
 
 
                 string sql = "SELECT id, name, age FROM users";
 
                 List<Person> persons = new();
 
-                using var cmd = new NpgsqlCommand(sql, _Connection);
-                using var reader = cmd.ExecuteReader();
-                while (reader.Read())
+                await using var cmd = new NpgsqlCommand(sql, connection);
+                await using var reader = await cmd.ExecuteReaderAsync();
+                while (await reader.ReadAsync())
                 {
                     Person person = new Person
                     {
@@ -86,31 +73,22 @@ namespace SQL_Proba
                 throw;
             }
 
-            finally
-            {
-                if (_Connection.State == ConnectionState.Open)
-                {
-                    _Connection.Close();
-                }
-            }
         }
 
-        public void Update(int id, string name, int age)
+        public async Task UpdateAsync(int id, string name, int age)
         {
 
             try
             {
-                if (_Connection.State != ConnectionState.Open)
-                {
-                    _Connection.Open();
-                }
+                await using var connection = new NpgsqlConnection(_ConnectionString);
+                await connection.OpenAsync();
 
                 string sql = "UPDATE users SET name = @name, age = @age WHERE id = @id;";
-                using var cmd = new NpgsqlCommand(sql, _Connection);
+                await using var cmd = new NpgsqlCommand(sql, connection);
                 cmd.Parameters.AddWithValue("name", name);
                 cmd.Parameters.AddWithValue("age", age);
                 cmd.Parameters.AddWithValue("id", id);
-                int count = cmd.ExecuteNonQuery();
+                int count = await cmd.ExecuteNonQueryAsync();
                 Console.WriteLine(count > 0 ? "✔ User updated!" : "User not found!");
             }
 
@@ -119,30 +97,20 @@ namespace SQL_Proba
                 Console.WriteLine($"Error updating user: {ex.Message}");
                 throw;
             }
-
-            finally
-            {
-                if (_Connection.State == ConnectionState.Open)
-                {
-                    _Connection.Close();
-                }
-            }
         }
 
-        public void DeletePerson(int id)
+        public async Task DeletePersonAsync(int id)
         {
 
             try
             {
-                if (_Connection.State != ConnectionState.Open)
-                {
-                    _Connection.Open();
-                }
+                await using var connection = new NpgsqlConnection(_ConnectionString);
+                await connection.OpenAsync();
 
                 string sql = "DELETE FROM users WHERE id = @id;";
-                using var cmd = new NpgsqlCommand(sql, _Connection);
+                await using var cmd = new NpgsqlCommand(sql, connection);
                 cmd.Parameters.AddWithValue("id", id);
-                int count = cmd.ExecuteNonQuery();
+                int count = await cmd.ExecuteNonQueryAsync();
                 Console.WriteLine(count > 0 ? "✔ User deleted!" : "User not found!");
             }
 
@@ -151,27 +119,18 @@ namespace SQL_Proba
                 Console.WriteLine($"Error deleting user: {ex.Message}");
                 throw;
             }
-
-            finally
-            {
-                if (_Connection.State == ConnectionState.Open)
-                {
-                    _Connection.Close();
-                }
-            }
         }
 
-        public void DeleteAllPerson()
+        public async Task DeleteAllPersonAsync()
         {
             try
             {
-                if (_Connection.State != ConnectionState.Open)
-                {
-                    _Connection.Open();
-                }
+                await using var connection = new NpgsqlConnection(_ConnectionString);
+                await connection.OpenAsync();
+
                 string sql = "DELETE FROM users;";
-                using var cmd = new NpgsqlCommand(sql, _Connection);
-                int count = cmd.ExecuteNonQuery();
+                await using var cmd = new NpgsqlCommand(sql, connection);
+                int count = await cmd.ExecuteNonQueryAsync();
                 Console.WriteLine($"✔ {count} users deleted!");
             }
             catch (Exception ex)
@@ -179,32 +138,9 @@ namespace SQL_Proba
                 Console.WriteLine($"Error deleting users: {ex.Message}");
                 throw;
             }
-            finally
-            {
-                if (_Connection.State == ConnectionState.Open)
-                {
-                    _Connection.Close();
-                }
-            }
-        }
-
-        public void Dispose() // ліквідація ресурсів
-        {
-            Dispose(true);
-            GC.SuppressFinalize(this);
-        }
-
-        protected virtual void Dispose(bool disposing)
-        {
-            if (!_disposed)
-            {
-                if (disposing)
-                {
-                    _Connection?.Dispose();
-                }
-
-                _disposed = true;
-            }
         }
     }
 }
+
+
+
