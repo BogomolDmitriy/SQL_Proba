@@ -1,7 +1,9 @@
-﻿using Xunit;
-using System;
+﻿using System;
 using System.Linq;
-using System.Reflection.Metadata;
+using System.Xml.Linq;
+using Xunit;
+
+[assembly: CollectionBehavior(DisableTestParallelization = true)] // Отключаем параллельное выполнение тестов
 
 namespace SQL_Proba.Tests
 {
@@ -20,14 +22,7 @@ namespace SQL_Proba.Tests
 
         private async Task ClearTable()
         {
-            try
-            {
-                await _repository.DeleteAllPersonAsync();
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Warning: Could not clear table: {ex.Message}");
-            }
+            await _repository.DeleteAllPersonAsync();
         }
 
         [Fact]
@@ -35,18 +30,15 @@ namespace SQL_Proba.Tests
         {
             // Arrange
             await ClearTable();
-            string name = "TestUser";
-            int age = 25;
 
             // Act
-            await _repository.CreateAsync(name, age);
+            await _repository.CreateAsync("Anton", 33);
             var persons = await _repository.GetAllAsync();
 
             // Assert
             Assert.Single(persons);
-            var person = persons.First();
-            Assert.Equal(name, person.Name);
-            Assert.Equal(age, person.Age);
+            Assert.Equal("Anton", persons[0].Name);
+            Assert.Equal(33, persons[0].Age);
         }
 
         [Theory]
@@ -112,29 +104,32 @@ namespace SQL_Proba.Tests
         [InlineData(new string[] { "Bill", "Anna", "Victoria", "Gerda", "Francheska" }, new int[] { 45, 7, 29, 20, 23 })]
         [InlineData(new string[] { "Vladimir", "Nika" }, new int[] { 40, 33 })]
         [InlineData(new string[] { "Vladimir", "Nika", "Max" }, new int[] { 40, 33, 1 })]
-        public async Task UpdatePerson_ExistingId_ShouldUpdatePerson2(string[] Name, int[] age)
+        public async Task UpdatePerson_ExistingId_ShouldUpdatePerson2(string[] names, int[] ages)
         {
-            await ClearTable();// 1. Очищаем
-            for (int i = 0; i < Name.Length; i++)// 2. Создаем пользователей
+
+            // Arrange
+            Assert.Equal(names.Length, ages.Length);
+            await ClearTable();// Очищаем
+            for (int i = 0; i < names.Length; i++)// Создаем пользователей
             {
-                await _repository.CreateAsync(Name[i], age[i]);
+                await _repository.CreateAsync(names[i], ages[i]);
             }
             var allPersons = await _repository.GetAllAsync();// Получаем всех пользователей
 
-            //int[] personIds = await _repository.GetAllAsync().Select(p => p.Id).ToArray();// 3. Получаем все ID
-            int[] personIds = allPersons.Select(p => p.Id).ToArray();
-            for (int i = 0; i < Name.Length; i++)// 4. Обновляем всех пользователей
+            int[] personIds = allPersons.Select(p => p.Id).ToArray(); //Получаем все ID
+            for (int i = 0; i < names.Length; i++)// Обновляем всех пользователей
             {
-                await _repository.UpdateAsync(personIds[i], Name[i] + "_Updated", age[i] + 1);
+                await _repository.UpdateAsync(personIds[i], names[i] + "_Updated", ages[i] + 1);
             }
 
-            var updatedPersons = await _repository.GetAllAsync();// 5. Проверяем результат
-            for (int i = 0; i < Name.Length; i++)
+            var updatedPersons = await _repository.GetAllAsync();// Проверяем результат
+            for (int i = 0; i < names.Length; i++)
             {
                 var person = updatedPersons.Single(p => p.Id == personIds[i]);
                 // Assert
-                Assert.Equal(Name[i] + "_Updated", person.Name);
-                Assert.Equal(age[i] + 1, person.Age);
+                Assert.Equal(names.Length, updatedPersons.Count);
+                Assert.Equal(names[i] + "_Updated", person.Name);
+                Assert.Equal(ages[i] + 1, person.Age);
                 Assert.Equal(personIds[i], person.Id);
             }
         }
