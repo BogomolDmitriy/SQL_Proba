@@ -10,8 +10,6 @@ namespace SQL_Proba
     {
         private string _ConnectionString;
 
-        private bool _disposed = false;
-
         public PersonRepository(string connectionString)
         {
             _ConnectionString = connectionString;
